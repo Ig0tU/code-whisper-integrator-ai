@@ -17,7 +17,8 @@ export const HUGGINGFACE_MODELS: HuggingFaceModelOption[] = [
   { id: "google/flan-t5-xxl", name: "Flan-T5 XXL", description: "Google's Flan-T5 model" },
   { id: "meta-llama/Llama-2-7b-chat-hf", name: "Llama-2 7B Chat", description: "Meta's Llama 2 chat model" },
   { id: "tiiuae/falcon-7b", name: "Falcon 7B", description: "TIIUAE's Falcon model" },
-  { id: "mistralai/Mistral-7B-Instruct-v0.2", name: "Mistral 7B Instruct", description: "Mistral AI's instruction-tuned model" }
+  { id: "mistralai/Mistral-7B-Instruct-v0.2", name: "Mistral 7B Instruct", description: "Mistral AI's instruction-tuned model" },
+  { id: "codellama/CodeLlama-7b-hf", name: "CodeLlama 7B", description: "Code-specialized Llama model" }
 ];
 
 export interface CompletionParams {
@@ -47,6 +48,8 @@ export class HuggingFaceService {
       
       const url = `${this.baseUrl}/${model}`;
       
+      console.log(`Generating completion with model: ${model}`);
+      
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -66,8 +69,9 @@ export class HuggingFaceService {
       });
       
       if (!response.ok) {
-        const errorResponse = await response.json();
-        throw new Error(errorResponse.error || "Failed to generate text");
+        const errorData = await response.text();
+        console.error("HuggingFace API error:", errorData);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const result = await response.json();
@@ -78,8 +82,8 @@ export class HuggingFaceService {
       } else if (result.generated_text) {
         return result.generated_text;
       } else {
-        console.error("Unexpected response format:", result);
-        return result.toString();
+        console.log("Unexpected response format:", result);
+        return JSON.stringify(result, null, 2);
       }
     } catch (error) {
       console.error("Error generating completion:", error);
@@ -89,11 +93,15 @@ export class HuggingFaceService {
   }
 
   async analyzeCode(code: string): Promise<string> {
-    // We'll use a specialized model for code understanding
+    // Use a code-specific model for analysis
     return this.generateCompletion({
-      model: "gpt2", // Replace with more appropriate model for production
-      prompt: `Analyze this code:\n\n${code}\n\nAnalysis:`,
-      max_tokens: 500,
+      model: "codellama/CodeLlama-7b-hf", // Using a code-specialized model
+      prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
+1. Main components and their functions
+2. Language and framework identification
+3. Key integration points
+4. Potential issues or improvements`,
+      max_tokens: 800,
       temperature: 0.3
     });
   }

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import SettingsPanel from './SettingsPanel';
-import { HuggingFaceService, huggingFaceApiStorage } from '@/services/huggingfaceService';
+import { HuggingFaceService, huggingFaceApiStorage, HUGGINGFACE_MODELS } from '@/services/huggingfaceService';
 import { toast } from 'sonner';
 
 interface ChatMessage {
@@ -23,12 +23,25 @@ const ChatInterface: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [selectedModel, setSelectedModel] = useState('gpt2');
+  const [selectedModel, setSelectedModel] = useState(HUGGINGFACE_MODELS[0].id);
   
   // Check for API key on mount
   useEffect(() => {
     const apiKey = huggingFaceApiStorage.getApiKey();
     setApiKeyMissing(!apiKey);
+    
+    // Set up event listener for model changes
+    const handleModelChange = (event: CustomEvent) => {
+      if (event.detail && event.detail.model) {
+        setSelectedModel(event.detail.model);
+      }
+    };
+    
+    window.addEventListener('modelChanged' as any, handleModelChange);
+    
+    return () => {
+      window.removeEventListener('modelChanged' as any, handleModelChange);
+    };
   }, []);
 
   const scrollToBottom = () => {
@@ -65,6 +78,7 @@ const ChatInterface: React.FC = () => {
     setIsProcessing(true);
     
     try {
+      console.log(`Sending message using model: ${selectedModel}`);
       const huggingFaceService = new HuggingFaceService(apiKey);
       
       // Make a real API call to Hugging Face
@@ -98,8 +112,9 @@ const ChatInterface: React.FC = () => {
   };
 
   const toggleRecording = () => {
+    // Real voice recording functionality would go here
+    toast.info("Voice recording not implemented yet");
     setIsRecording(!isRecording);
-    // Implement actual voice recording functionality
   };
 
   return (
