@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -98,13 +97,8 @@ const SettingsPanel: React.FC = () => {
     setHfKeyStatus('validating');
     try {
       const hfService = new HuggingFaceService(key);
-      // Simple test prompt to validate the API key
-      await hfService.generateCompletion({
-        model: "gpt2",
-        prompt: "Hello, this is a test.",
-        max_tokens: 5
-      });
-      setHfKeyStatus('valid');
+      const isValid = await hfService.validateApiKey();
+      setHfKeyStatus(isValid ? 'valid' : 'invalid');
     } catch (error) {
       console.error("HuggingFace API key validation failed:", error);
       setHfKeyStatus('invalid');
@@ -120,12 +114,8 @@ const SettingsPanel: React.FC = () => {
     setGeminiKeyStatus('validating');
     try {
       const geminiService = new GeminiService(key);
-      // Simple test prompt to validate the API key
-      await geminiService.generateCompletion({
-        model: "gemini-pro",
-        prompt: "Hello, this is a test."
-      });
-      setGeminiKeyStatus('valid');
+      const isValid = await geminiService.validateApiKey();
+      setGeminiKeyStatus(isValid ? 'valid' : 'invalid');
     } catch (error) {
       console.error("Gemini API key validation failed:", error);
       setGeminiKeyStatus('invalid');
@@ -143,7 +133,7 @@ const SettingsPanel: React.FC = () => {
     const newKey = e.target.value;
     setGeminiApiKey(newKey);
     // Reset validation status when user is typing
-    setGeminiKeyStatus('idle');
+    setHfKeyStatus('idle');
   };
 
   const handleHfApiKeyBlur = () => {

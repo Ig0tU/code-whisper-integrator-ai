@@ -94,14 +94,19 @@ export class HuggingFaceService {
 
   async validateApiKey(): Promise<boolean> {
     try {
-      // Use a minimal prompt just to validate the API key works
-      await this.generateCompletion({
-        model: "gpt2", // Using a small model for quick validation
-        prompt: "Hello",
-        max_tokens: 5,
-        temperature: 0.1
+      if (!this.apiKey || this.apiKey.trim() === "") {
+        return false;
+      }
+
+      // Check if the API key is valid by just querying model information
+      const response = await fetch(`${this.baseUrl}/gpt2/`, {
+        method: "HEAD",
+        headers: {
+          "Authorization": `Bearer ${this.apiKey}`
+        }
       });
-      return true;
+      
+      return response.ok;
     } catch (error) {
       console.error("HuggingFace API key validation failed:", error);
       return false;
@@ -119,6 +124,31 @@ export class HuggingFaceService {
 4. Potential issues or improvements`,
       max_tokens: 800,
       temperature: 0.3
+    });
+  }
+  
+  async suggestCodeForFramework(framework: string, prompt: string): Promise<string> {
+    let enhancedPrompt = prompt;
+    
+    switch (framework) {
+      case 'react':
+        enhancedPrompt = `As a React expert, ${prompt} Use functional components, hooks, and follow React best practices.`;
+        break;
+      case 'vue':
+        enhancedPrompt = `As a Vue.js expert, ${prompt} Follow Vue 3 composition API patterns and best practices.`;
+        break;
+      case 'python':
+        enhancedPrompt = `As a Python expert, ${prompt} Follow PEP 8 standards and Python best practices.`;
+        break;
+      default:
+        enhancedPrompt = prompt;
+    }
+    
+    return this.generateCompletion({
+      model: "codellama/CodeLlama-7b-hf",
+      prompt: enhancedPrompt,
+      max_tokens: 1500,
+      temperature: 0.5
     });
   }
 }

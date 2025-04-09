@@ -87,13 +87,25 @@ export class GeminiService {
 
   async validateApiKey(): Promise<boolean> {
     try {
+      if (!this.apiKey || this.apiKey.trim() === "") {
+        return false;
+      }
+      
       // Use a minimal prompt just to validate the API key works
-      await this.generateCompletion({
-        model: "gemini-pro",
-        prompt: "Hello",
-        maxTokens: 5,
-        temperature: 0.1
+      const testUrl = `${this.baseUrl}/models/gemini-pro?key=${this.apiKey}`;
+      
+      const response = await fetch(testUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
       });
+      
+      if (!response.ok) {
+        console.error("Gemini API key validation failed with status:", response.status);
+        return false;
+      }
+      
       return true;
     } catch (error) {
       console.error("Gemini API key validation failed:", error);
@@ -111,6 +123,40 @@ export class GeminiService {
 4. Potential issues or improvements`,
       maxTokens: 1024,
       temperature: 0.2
+    });
+  }
+  
+  async suggestCodeForFramework(framework: string, prompt: string): Promise<string> {
+    let enhancedPrompt = prompt;
+    
+    switch (framework) {
+      case 'react':
+        enhancedPrompt = `As a React expert, ${prompt} Use functional components, hooks, and follow React best practices.`;
+        break;
+      case 'vue':
+        enhancedPrompt = `As a Vue.js expert, ${prompt} Follow Vue 3 composition API patterns and best practices.`;
+        break;
+      case 'angular':
+        enhancedPrompt = `As an Angular expert, ${prompt} Follow Angular best practices with TypeScript.`;
+        break;
+      case 'tailwind':
+        enhancedPrompt = `${prompt} Use Tailwind CSS for all styling. Ensure responsive design.`;
+        break;
+      case 'node':
+        enhancedPrompt = `As a Node.js expert, ${prompt} Follow modern ES6+ patterns and Node.js best practices.`;
+        break;
+      case 'python':
+        enhancedPrompt = `As a Python expert, ${prompt} Follow PEP 8 standards and Python best practices.`;
+        break;
+      default:
+        enhancedPrompt = prompt;
+    }
+    
+    return this.generateCompletion({
+      model: "gemini-pro",
+      prompt: enhancedPrompt,
+      maxTokens: 2048,
+      temperature: 0.7
     });
   }
 }
