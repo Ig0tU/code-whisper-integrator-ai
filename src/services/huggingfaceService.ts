@@ -92,6 +92,22 @@ export class HuggingFaceService {
     }
   }
 
+  async validateApiKey(): Promise<boolean> {
+    try {
+      // Use a minimal prompt just to validate the API key works
+      await this.generateCompletion({
+        model: "gpt2", // Using a small model for quick validation
+        prompt: "Hello",
+        max_tokens: 5,
+        temperature: 0.1
+      });
+      return true;
+    } catch (error) {
+      console.error("HuggingFace API key validation failed:", error);
+      return false;
+    }
+  }
+
   async analyzeCode(code: string): Promise<string> {
     // Use a code-specific model for analysis
     return this.generateCompletion({

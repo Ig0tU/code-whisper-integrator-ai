@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -8,11 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Info, Eye, EyeOff } from 'lucide-react';
+import { Check, Info, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
-import { HUGGINGFACE_MODELS, huggingFaceApiStorage } from '@/services/huggingfaceService';
+import { HUGGINGFACE_MODELS, huggingFaceApiStorage, HuggingFaceService } from '@/services/huggingfaceService';
+import { GEMINI_MODELS, geminiApiStorage, GeminiService } from '@/services/geminiService';
 import { toast } from 'sonner';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 const languagePresets = [
   { id: 'react', name: 'React', category: 'frontend', color: 'bg-blue-500' },
@@ -55,38 +59,168 @@ const SettingsPanel: React.FC = () => {
   const [autoSave, setAutoSave] = useState(true);
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [activePrompt, setActivePrompt] = useState('default');
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(HUGGINGFACE_MODELS[0].id);
+  
+  // API keys state
+  const [hfApiKey, setHfApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [showHfApiKey, setShowHfApiKey] = useState(false);
+  const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
+  
+  // API key validation state
+  const [hfKeyStatus, setHfKeyStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [geminiKeyStatus, setGeminiKeyStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  
+  // Model selection state
+  const [selectedHfModel, setSelectedHfModel] = useState(HUGGINGFACE_MODELS[0].id);
+  const [selectedGeminiModel, setSelectedGeminiModel] = useState(GEMINI_MODELS[0].id);
 
   useEffect(() => {
-    const storedApiKey = huggingFaceApiStorage.getApiKey();
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
+    // Load saved API keys on component mount
+    const storedHfApiKey = huggingFaceApiStorage.getApiKey();
+    if (storedHfApiKey) {
+      setHfApiKey(storedHfApiKey);
+      validateHfApiKey(storedHfApiKey);
+    }
+    
+    const storedGeminiApiKey = geminiApiStorage.getApiKey();
+    if (storedGeminiApiKey) {
+      setGeminiApiKey(storedGeminiApiKey);
+      validateGeminiApiKey(storedGeminiApiKey);
     }
   }, []);
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setApiKey(e.target.value);
+  const validateHfApiKey = async (key: string) => {
+    if (!key.trim()) {
+      setHfKeyStatus('idle');
+      return;
+    }
+    
+    setHfKeyStatus('validating');
+    try {
+      const hfService = new HuggingFaceService(key);
+      // Simple test prompt to validate the API key
+      await hfService.generateCompletion({
+        model: "gpt2",
+        prompt: "Hello, this is a test.",
+        max_tokens: 5
+      });
+      setHfKeyStatus('valid');
+    } catch (error) {
+      console.error("HuggingFace API key validation failed:", error);
+      setHfKeyStatus('invalid');
+    }
+  };
+
+  const validateGeminiApiKey = async (key: string) => {
+    if (!key.trim()) {
+      setGeminiKeyStatus('idle');
+      return;
+    }
+    
+    setGeminiKeyStatus('validating');
+    try {
+      const geminiService = new GeminiService(key);
+      // Simple test prompt to validate the API key
+      await geminiService.generateCompletion({
+        model: "gemini-pro",
+        prompt: "Hello, this is a test."
+      });
+      setGeminiKeyStatus('valid');
+    } catch (error) {
+      console.error("Gemini API key validation failed:", error);
+      setGeminiKeyStatus('invalid');
+    }
+  };
+
+  const handleHfApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newKey = e.target.value;
+    setHfApiKey(newKey);
+    // Reset validation status when user is typing
+    setHfKeyStatus('idle');
+  };
+
+  const handleGeminiApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newKey = e.target.value;
+    setGeminiApiKey(newKey);
+    // Reset validation status when user is typing
+    setGeminiKeyStatus('idle');
+  };
+
+  const handleHfApiKeyBlur = () => {
+    validateHfApiKey(hfApiKey);
+  };
+
+  const handleGeminiApiKeyBlur = () => {
+    validateGeminiApiKey(geminiApiKey);
   };
 
   const handleApiKeySave = () => {
-    if (apiKey.trim()) {
-      huggingFaceApiStorage.setApiKey(apiKey.trim());
-      toast.success("API key saved successfully!");
+    let hasValidKey = false;
+    
+    if (hfApiKey.trim()) {
+      huggingFaceApiStorage.setApiKey(hfApiKey.trim());
+      validateHfApiKey(hfApiKey.trim());
+      hasValidKey = true;
+    }
+    
+    if (geminiApiKey.trim()) {
+      geminiApiStorage.setApiKey(geminiApiKey.trim());
+      validateGeminiApiKey(geminiApiKey.trim());
+      hasValidKey = true;
+    }
+    
+    if (hasValidKey) {
+      toast.success("API key(s) saved successfully!");
     } else {
-      toast.error("Please enter a valid API key");
+      toast.error("Please enter at least one valid API key");
     }
   };
 
   const handlePresetSelect = (presetId: string) => {
     setSelectedPreset(presetId);
-    // Here you would load the specific settings for the selected preset
+    
+    // Apply preset-specific settings
+    // These could be adjusted based on the selected preset
+    switch (presetId) {
+      case 'react':
+      case 'vue':
+      case 'angular':
+        setTemperature(0.5); // Lower temperature for more precise frontend code
+        setSelectedGeminiModel("gemini-pro");
+        break;
+      case 'python':
+      case 'django':
+      case 'node':
+        setTemperature(0.6); // Balanced for backend code
+        setSelectedGeminiModel("gemini-pro");
+        break;
+      case 'gradio':
+      case 'streamlit':
+        setTemperature(0.7); // More creativity for AI apps
+        setSelectedGeminiModel("gemini-pro-vision"); // Vision model for AI applications
+        break;
+      default:
+        setTemperature(0.7); // Default temperature
+        setSelectedGeminiModel("gemini-pro");
+    }
   };
 
   const handleCustomPromptSave = () => {
     // Save custom prompt logic
     toast.success("Custom prompt saved");
+  };
+
+  const getStatusIcon = (status: 'idle' | 'validating' | 'valid' | 'invalid') => {
+    switch (status) {
+      case 'validating':
+        return <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent" />;
+      case 'valid':
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'invalid':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -101,60 +235,136 @@ const SettingsPanel: React.FC = () => {
       <TabsContent value="api" className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Hugging Face API Configuration</CardTitle>
+            <CardTitle>AI API Configuration</CardTitle>
             <CardDescription>
-              Enter your Hugging Face API key to use their models for text generation
+              Configure your API keys for Google Gemini and Hugging Face
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="api-key">API Key</Label>
-                <div className="flex">
-                  <Input
-                    id="api-key"
-                    type={showApiKey ? "text" : "password"}
-                    value={apiKey}
-                    onChange={handleApiKeyChange}
-                    placeholder="Enter your Hugging Face API key"
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="ml-2"
-                  >
-                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
+            <div className="space-y-6">
+              {/* Google Gemini API Configuration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Google Gemini (Recommended)</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="gemini-api-key" className="flex items-center">
+                    Gemini API Key
+                    {geminiKeyStatus !== 'idle' && (
+                      <span className="ml-2">{getStatusIcon(geminiKeyStatus)}</span>
+                    )}
+                  </Label>
+                  <div className="flex">
+                    <Input
+                      id="gemini-api-key"
+                      type={showGeminiApiKey ? "text" : "password"}
+                      value={geminiApiKey}
+                      onChange={handleGeminiApiKeyChange}
+                      onBlur={handleGeminiApiKeyBlur}
+                      placeholder="Enter your Google Gemini API key"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
+                      className="ml-2"
+                    >
+                      {showGeminiApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {geminiKeyStatus === 'invalid' && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Invalid API key. Please check and try again.
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your API key is stored locally and never sent to our servers
+                
+                <div className="space-y-2">
+                  <Label htmlFor="gemini-model-select">Gemini Model</Label>
+                  <Select value={selectedGeminiModel} onValueChange={setSelectedGeminiModel}>
+                    <SelectTrigger id="gemini-model-select">
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GEMINI_MODELS.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div className="flex flex-col">
+                            <span>{model.name}</span>
+                            <span className="text-xs text-muted-foreground">{model.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                {/* Hugging Face API Configuration */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Hugging Face (Optional)</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="hf-api-key" className="flex items-center">
+                      HuggingFace API Key
+                      {hfKeyStatus !== 'idle' && (
+                        <span className="ml-2">{getStatusIcon(hfKeyStatus)}</span>
+                      )}
+                    </Label>
+                    <div className="flex">
+                      <Input
+                        id="hf-api-key"
+                        type={showHfApiKey ? "text" : "password"}
+                        value={hfApiKey}
+                        onChange={handleHfApiKeyChange}
+                        onBlur={handleHfApiKeyBlur}
+                        placeholder="Enter your Hugging Face API key"
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowHfApiKey(!showHfApiKey)}
+                        className="ml-2"
+                      >
+                        {showHfApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {hfKeyStatus === 'invalid' && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Invalid API key. Please check and try again.
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="hf-model-select">HuggingFace Model</Label>
+                    <Select value={selectedHfModel} onValueChange={setSelectedHfModel}>
+                      <SelectTrigger id="hf-model-select">
+                        <SelectValue placeholder="Select a model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HUGGINGFACE_MODELS.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            <div className="flex flex-col">
+                              <span>{model.name}</span>
+                              <span className="text-xs text-muted-foreground">{model.description}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground mb-4">
+                  Your API keys are stored locally in your browser and never sent to our servers.
+                  We recommend using Google Gemini for the best experience.
                 </p>
+                <Button onClick={handleApiKeySave} className="w-full">
+                  Save API Settings
+                </Button>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="model-select">Model</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
-                  <SelectTrigger id="model-select">
-                    <SelectValue placeholder="Select a model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HUGGINGFACE_MODELS.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        <div className="flex flex-col">
-                          <span>{model.name}</span>
-                          <span className="text-xs text-muted-foreground">{model.description}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button onClick={handleApiKeySave} className="w-full">
-                Save API Settings
-              </Button>
             </div>
           </CardContent>
         </Card>

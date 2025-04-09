@@ -85,6 +85,22 @@ export class GeminiService {
     }
   }
 
+  async validateApiKey(): Promise<boolean> {
+    try {
+      // Use a minimal prompt just to validate the API key works
+      await this.generateCompletion({
+        model: "gemini-pro",
+        prompt: "Hello",
+        maxTokens: 5,
+        temperature: 0.1
+      });
+      return true;
+    } catch (error) {
+      console.error("Gemini API key validation failed:", error);
+      return false;
+    }
+  }
+
   async analyzeCode(code: string): Promise<string> {
     return this.generateCompletion({
       model: "gemini-pro",
