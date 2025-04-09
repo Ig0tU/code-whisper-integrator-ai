@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import SettingsPanel from './SettingsPanel';
-import { HuggingFaceService, huggingFaceApiStorage, HUGGINGFACE_MODELS } from '@/services/huggingfaceService';
+import { HuggingFaceService, huggingFaceApiStorage } from '@/services/huggingfaceService';
+import { GeminiService, geminiApiStorage, GEMINI_MODELS } from '@/services/geminiService';
 import { toast } from 'sonner';
 
 interface ChatMessage {
@@ -23,11 +24,11 @@ const ChatInterface: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [selectedModel, setSelectedModel] = useState(HUGGINGFACE_MODELS[0].id);
+  const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].id);
   
   // Check for API key on mount
   useEffect(() => {
-    const apiKey = huggingFaceApiStorage.getApiKey();
+    const apiKey = geminiApiStorage.getApiKey();
     setApiKeyMissing(!apiKey);
     
     // Set up event listener for model changes
@@ -60,9 +61,9 @@ const ChatInterface: React.FC = () => {
   const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
     
-    const apiKey = huggingFaceApiStorage.getApiKey();
+    const apiKey = geminiApiStorage.getApiKey();
     if (!apiKey) {
-      toast.error("Please add your Hugging Face API key in settings");
+      toast.error("Please add your Google Gemini API key in settings");
       setApiKeyMissing(true);
       return;
     }
@@ -78,14 +79,14 @@ const ChatInterface: React.FC = () => {
     setIsProcessing(true);
     
     try {
-      console.log(`Sending message using model: ${selectedModel}`);
-      const huggingFaceService = new HuggingFaceService(apiKey);
+      console.log(`Sending message using Gemini model: ${selectedModel}`);
+      const geminiService = new GeminiService(apiKey);
       
-      // Make a real API call to Hugging Face
-      const response = await huggingFaceService.generateCompletion({
+      // Make a real API call to Gemini
+      const response = await geminiService.generateCompletion({
         model: selectedModel,
         prompt: inputValue,
-        max_tokens: 150,
+        maxTokens: 1024,
         temperature: 0.7
       });
       
@@ -120,7 +121,7 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="flex flex-col h-full border rounded-lg bg-background">
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-medium">Agentegrator Chat</h2>
+        <h2 className="text-lg font-medium">Agentegrator Chat (Gemini)</h2>
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -140,7 +141,7 @@ const ChatInterface: React.FC = () => {
         {apiKeyMissing && (
           <Alert className="mb-4">
             <AlertDescription>
-              Please configure your Hugging Face API key in settings to use the chat functionality.
+              Please configure your Google Gemini API key in settings to use the chat functionality.
             </AlertDescription>
           </Alert>
         )}

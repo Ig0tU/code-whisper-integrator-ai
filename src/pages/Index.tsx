@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Code, FileCode, Link, Upload } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
 import { HuggingFaceService, huggingFaceApiStorage } from '@/services/huggingfaceService';
+import { GeminiService, geminiApiStorage } from '@/services/geminiService';
 import { toast } from 'sonner';
 
 const Index = () => {
@@ -47,21 +48,43 @@ const Index = () => {
   };
 
   const analyzeCode = async (code: string) => {
-    const apiKey = huggingFaceApiStorage.getApiKey();
-    if (!apiKey) {
-      toast.error("Please add your Hugging Face API key in settings");
+    // Try to use Gemini first, fall back to Hugging Face if not available
+    const geminiApiKey = geminiApiStorage.getApiKey();
+    const huggingFaceApiKey = huggingFaceApiStorage.getApiKey();
+    
+    if (!geminiApiKey && !huggingFaceApiKey) {
+      toast.error("Please add either your Google Gemini or Hugging Face API key in settings");
       setIsProcessing(false);
       return;
     }
 
     try {
-      const huggingFaceService = new HuggingFaceService(apiKey);
-      const analysis = await huggingFaceService.analyzeCode(code);
+      let analysis = "";
+      
+      if (geminiApiKey) {
+        try {
+          const geminiService = new GeminiService(geminiApiKey);
+          analysis = await geminiService.analyzeCode(code);
+        } catch (error) {
+          console.error("Error analyzing code with Gemini:", error);
+          if (huggingFaceApiKey) {
+            toast.info("Falling back to Hugging Face for analysis");
+            const huggingFaceService = new HuggingFaceService(huggingFaceApiKey);
+            analysis = await huggingFaceService.analyzeCode(code);
+          } else {
+            throw error;
+          }
+        }
+      } else if (huggingFaceApiKey) {
+        const huggingFaceService = new HuggingFaceService(huggingFaceApiKey);
+        analysis = await huggingFaceService.analyzeCode(code);
+      }
+      
       setAnalysisResults(analysis);
       setAnalysisComplete(true);
     } catch (error) {
       console.error("Error analyzing code:", error);
-      toast.error("Failed to analyze code. Please check your API key and try again.");
+      toast.error("Failed to analyze code. Please check your API keys and try again.");
     } finally {
       setIsProcessing(false);
     }
