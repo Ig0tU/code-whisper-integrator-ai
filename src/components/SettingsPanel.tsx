@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Info } from 'lucide-react';
+import { Check, Info, Eye, EyeOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
+import { HUGGINGFACE_MODELS, huggingFaceApiStorage } from '@/services/huggingfaceService';
+import { toast } from 'sonner';
 
 const languagePresets = [
   { id: 'react', name: 'React', category: 'frontend', color: 'bg-blue-500' },
@@ -53,6 +55,29 @@ const SettingsPanel: React.FC = () => {
   const [autoSave, setAutoSave] = useState(true);
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [activePrompt, setActivePrompt] = useState('default');
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(HUGGINGFACE_MODELS[0].id);
+
+  useEffect(() => {
+    const storedApiKey = huggingFaceApiStorage.getApiKey();
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    }
+  }, []);
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value);
+  };
+
+  const handleApiKeySave = () => {
+    if (apiKey.trim()) {
+      huggingFaceApiStorage.setApiKey(apiKey.trim());
+      toast.success("API key saved successfully!");
+    } else {
+      toast.error("Please enter a valid API key");
+    }
+  };
 
   const handlePresetSelect = (presetId: string) => {
     setSelectedPreset(presetId);
@@ -61,15 +86,79 @@ const SettingsPanel: React.FC = () => {
 
   const handleCustomPromptSave = () => {
     // Save custom prompt logic
+    toast.success("Custom prompt saved");
   };
 
   return (
-    <Tabs defaultValue="presets" className="w-full mt-6">
-      <TabsList className="grid grid-cols-3 mb-4">
+    <Tabs defaultValue="api" className="w-full mt-6">
+      <TabsList className="grid grid-cols-4 mb-4">
+        <TabsTrigger value="api">API Settings</TabsTrigger>
         <TabsTrigger value="presets">Presets</TabsTrigger>
         <TabsTrigger value="parameters">Parameters</TabsTrigger>
         <TabsTrigger value="prompts">Prompts</TabsTrigger>
       </TabsList>
+      
+      <TabsContent value="api" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Hugging Face API Configuration</CardTitle>
+            <CardDescription>
+              Enter your Hugging Face API key to use their models for text generation
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="api-key">API Key</Label>
+                <div className="flex">
+                  <Input
+                    id="api-key"
+                    type={showApiKey ? "text" : "password"}
+                    value={apiKey}
+                    onChange={handleApiKeyChange}
+                    placeholder="Enter your Hugging Face API key"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="ml-2"
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your API key is stored locally and never sent to our servers
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="model-select">Model</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger id="model-select">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HUGGINGFACE_MODELS.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <div className="flex flex-col">
+                          <span>{model.name}</span>
+                          <span className="text-xs text-muted-foreground">{model.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button onClick={handleApiKeySave} className="w-full">
+                Save API Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
       
       <TabsContent value="presets" className="space-y-4">
         <div className="space-y-4">

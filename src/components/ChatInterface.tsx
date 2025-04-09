@@ -1,12 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Settings } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import SettingsPanel from './SettingsPanel';
+import { HuggingFaceService, huggingFaceApiStorage } from '@/services/huggingfaceService';
+import { toast } from 'sonner';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -18,9 +20,39 @@ const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [selectedModel, setSelectedModel] = useState('gpt2');
+  
+  // Check for API key on mount
+  useEffect(() => {
+    const apiKey = huggingFaceApiStorage.getApiKey();
+    setApiKeyMissing(!apiKey);
+  }, []);
 
-  const handleSendMessage = () => {
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
+    
+    const apiKey = huggingFaceApiStorage.getApiKey();
+    if (!apiKey) {
+      toast.error("Please add your Hugging Face API key in settings");
+      setApiKeyMissing(true);
+      return;
+    }
     
     const newMessage: ChatMessage = {
       role: 'user',
@@ -28,18 +60,34 @@ const ChatInterface: React.FC = () => {
       timestamp: new Date(),
     };
     
-    setMessages([...messages, newMessage]);
+    setMessages(messages => [...messages, newMessage]);
     setInputValue('');
+    setIsProcessing(true);
     
-    // Simulate a response from the AI (replace with actual implementation)
-    setTimeout(() => {
+    try {
+      const huggingFaceService = new HuggingFaceService(apiKey);
+      
+      // Make a real API call to Hugging Face
+      const response = await huggingFaceService.generateCompletion({
+        model: selectedModel,
+        prompt: inputValue,
+        max_tokens: 150,
+        temperature: 0.7
+      });
+      
       const aiResponse: ChatMessage = {
         role: 'assistant',
-        content: `I've processed your request: "${inputValue}"`,
+        content: response,
         timestamp: new Date(),
       };
+      
       setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    } catch (error) {
+      console.error('Error generating response:', error);
+      toast.error('Failed to generate response. Please check your API key and try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -73,12 +121,20 @@ const ChatInterface: React.FC = () => {
         </Sheet>
       </div>
 
-      <ScrollArea className="flex-grow p-4">
+      <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
+        {apiKeyMissing && (
+          <Alert className="mb-4">
+            <AlertDescription>
+              Please configure your Hugging Face API key in settings to use the chat functionality.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground text-center">
-                No messages yet. Start by sending a message or configuring your integration settings.
+                No messages yet. Start by sending a message or configuring your Hugging Face API key in settings.
               </p>
             </div>
           ) : (
@@ -96,13 +152,25 @@ const ChatInterface: React.FC = () => {
                       : 'bg-muted text-foreground'
                   }`}
                 >
-                  <p>{msg.content}</p>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
                   <span className="text-xs opacity-70 mt-1 block">
                     {msg.timestamp.toLocaleTimeString()}
                   </span>
                 </div>
               </div>
             ))
+          )}
+          
+          {isProcessing && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] p-3 rounded-lg bg-muted text-foreground">
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                  <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                  <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "600ms" }}></div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </ScrollArea>
@@ -114,6 +182,7 @@ const ChatInterface: React.FC = () => {
           onKeyDown={handleKeyPress}
           placeholder="Type your message or instructions..."
           className="min-h-[80px] resize-none"
+          disabled={isProcessing}
         />
         <div className="flex flex-col gap-2">
           <Button
@@ -121,13 +190,14 @@ const ChatInterface: React.FC = () => {
             variant={isRecording ? "destructive" : "secondary"}
             onClick={toggleRecording}
             title={isRecording ? "Stop recording" : "Start voice recording"}
+            disabled={isProcessing}
           >
             <Mic className="h-5 w-5" />
           </Button>
           <Button 
             size="icon" 
             onClick={handleSendMessage}
-            disabled={inputValue.trim() === ''}
+            disabled={inputValue.trim() === '' || isProcessing}
           >
             <Send className="h-5 w-5" />
           </Button>
