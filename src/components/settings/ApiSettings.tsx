@@ -59,6 +59,12 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
       const hfService = new HuggingFaceService(key);
       const isValid = await hfService.validateApiKey();
       setHfKeyStatus(isValid ? 'valid' : 'invalid');
+      
+      if (isValid) {
+        // Immediately save valid key to storage
+        huggingFaceApiStorage.setApiKey(key.trim());
+        console.log("Hugging Face API key validated and saved");
+      }
     } catch (error) {
       console.error("HuggingFace API key validation failed:", error);
       setHfKeyStatus('invalid');
@@ -76,6 +82,12 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
       const geminiService = new GeminiService(key);
       const isValid = await geminiService.validateApiKey();
       setGeminiKeyStatus(isValid ? 'valid' : 'invalid');
+      
+      if (isValid) {
+        // Immediately save valid key to storage
+        geminiApiStorage.setApiKey(key.trim());
+        console.log("Gemini API key validated and saved");
+      }
     } catch (error) {
       console.error("Gemini API key validation failed:", error);
       setGeminiKeyStatus('invalid');
