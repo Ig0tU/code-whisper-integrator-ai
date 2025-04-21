@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 interface HuggingFaceModelOption {
@@ -76,7 +75,6 @@ export class HuggingFaceService {
       
       const result = await response.json();
       
-      // Different models return results in different formats
       if (Array.isArray(result)) {
         return result[0].generated_text;
       } else if (result.generated_text) {
@@ -95,16 +93,23 @@ export class HuggingFaceService {
   async validateApiKey(): Promise<boolean> {
     try {
       if (!this.apiKey || this.apiKey.trim() === "") {
+        console.log("HuggingFace API key is empty");
         return false;
       }
 
-      // Check if the API key is valid by just querying model information
-      const response = await fetch(`${this.baseUrl}/gpt2/`, {
-        method: "HEAD",
+      const testUrl = "https://huggingface.co/api/whoami";
+      
+      console.log("Validating HuggingFace API key with URL:", testUrl);
+      
+      const response = await fetch(testUrl, {
+        method: "GET",
         headers: {
           "Authorization": `Bearer ${this.apiKey}`
         }
       });
+      
+      const responseText = await response.text();
+      console.log("HuggingFace API validation response:", response.status, responseText);
       
       return response.ok;
     } catch (error) {
@@ -114,9 +119,8 @@ export class HuggingFaceService {
   }
 
   async analyzeCode(code: string): Promise<string> {
-    // Use a code-specific model for analysis
     return this.generateCompletion({
-      model: "codellama/CodeLlama-7b-hf", // Using a code-specialized model
+      model: "codellama/CodeLlama-7b-hf",
       prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
 1. Main components and their functions
 2. Language and framework identification
@@ -153,14 +157,12 @@ export class HuggingFaceService {
   }
 }
 
-// Type for API key storage
 export interface HuggingFaceApiKeyStorage {
   getApiKey(): string | null;
   setApiKey(key: string): void;
   clearApiKey(): void;
 }
 
-// Local storage implementation for API key
 export class LocalStorageHuggingFaceApi implements HuggingFaceApiKeyStorage {
   private readonly STORAGE_KEY = "huggingface_api_key";
   
@@ -177,5 +179,4 @@ export class LocalStorageHuggingFaceApi implements HuggingFaceApiKeyStorage {
   }
 }
 
-// Create a singleton instance
 export const huggingFaceApiStorage = new LocalStorageHuggingFaceApi();

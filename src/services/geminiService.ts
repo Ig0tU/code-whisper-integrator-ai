@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface GeminiModelOption {
@@ -24,7 +23,7 @@ export interface GeminiCompletionParams {
 
 export class GeminiService {
   private apiKey: string;
-  private baseUrl = "https://generativelanguage.googleapis.com/v1beta";
+  private baseUrl = "https://generativelanguage.googleapis.com/v1";
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -88,11 +87,13 @@ export class GeminiService {
   async validateApiKey(): Promise<boolean> {
     try {
       if (!this.apiKey || this.apiKey.trim() === "") {
+        console.log("Gemini API key is empty");
         return false;
       }
       
-      // Use a minimal prompt just to validate the API key works
-      const testUrl = `${this.baseUrl}/models/gemini-pro?key=${this.apiKey}`;
+      const testUrl = `${this.baseUrl}/models?key=${this.apiKey}`;
+      
+      console.log("Validating Gemini API key with URL:", testUrl);
       
       const response = await fetch(testUrl, {
         method: "GET",
@@ -100,6 +101,9 @@ export class GeminiService {
           "Content-Type": "application/json"
         }
       });
+      
+      const responseText = await response.text();
+      console.log("Gemini API validation response:", response.status, responseText);
       
       if (!response.ok) {
         console.error("Gemini API key validation failed with status:", response.status);
@@ -161,14 +165,12 @@ export class GeminiService {
   }
 }
 
-// Type for API key storage
 export interface GeminiApiKeyStorage {
   getApiKey(): string | null;
   setApiKey(key: string): void;
   clearApiKey(): void;
 }
 
-// Local storage implementation for API key
 export class LocalStorageGeminiApi implements GeminiApiKeyStorage {
   private readonly STORAGE_KEY = "gemini_api_key";
   
@@ -185,5 +187,4 @@ export class LocalStorageGeminiApi implements GeminiApiKeyStorage {
   }
 }
 
-// Create a singleton instance
 export const geminiApiStorage = new LocalStorageGeminiApi();

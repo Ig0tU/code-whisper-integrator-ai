@@ -55,19 +55,27 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
     
     setHfKeyStatus('validating');
+    console.log("Validating HuggingFace API key:", key.substring(0, 4) + '...');
+    
     try {
       const hfService = new HuggingFaceService(key);
       const isValid = await hfService.validateApiKey();
+      console.log("HuggingFace API key validation result:", isValid);
+      
       setHfKeyStatus(isValid ? 'valid' : 'invalid');
       
       if (isValid) {
         // Immediately save valid key to storage
         huggingFaceApiStorage.setApiKey(key.trim());
         console.log("Hugging Face API key validated and saved");
+        toast.success("Hugging Face API key validated successfully");
+      } else if (key.trim()) {
+        toast.error("Invalid Hugging Face API key");
       }
     } catch (error) {
       console.error("HuggingFace API key validation failed:", error);
       setHfKeyStatus('invalid');
+      toast.error("Error validating Hugging Face API key");
     }
   };
 
@@ -78,19 +86,27 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
     }
     
     setGeminiKeyStatus('validating');
+    console.log("Validating Gemini API key:", key.substring(0, 4) + '...');
+    
     try {
       const geminiService = new GeminiService(key);
       const isValid = await geminiService.validateApiKey();
+      console.log("Gemini API key validation result:", isValid);
+      
       setGeminiKeyStatus(isValid ? 'valid' : 'invalid');
       
       if (isValid) {
         // Immediately save valid key to storage
         geminiApiStorage.setApiKey(key.trim());
         console.log("Gemini API key validated and saved");
+        toast.success("Gemini API key validated successfully");
+      } else if (key.trim()) {
+        toast.error("Invalid Gemini API key");
       }
     } catch (error) {
       console.error("Gemini API key validation failed:", error);
       setGeminiKeyStatus('invalid');
+      toast.error("Error validating Gemini API key");
     }
   };
 
@@ -104,7 +120,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   const handleGeminiApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newKey = e.target.value;
     setGeminiApiKey(newKey);
-    // Reset validation status when user is typing
+    // Reset validation status when user is typing - this was incorrectly setting hfKeyStatus
     setGeminiKeyStatus('idle');
   };
 
