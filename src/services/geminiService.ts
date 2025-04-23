@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface GeminiModelOption {
@@ -7,12 +6,14 @@ export interface GeminiModelOption {
   description: string;
 }
 
-// Updated models based on the actual available models from the API
+// Updated models based on the current Gemini 1.5 lineup
 export const GEMINI_MODELS: GeminiModelOption[] = [
-  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", description: "Stable version with 2 million token support" },
-  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", description: "Fast and versatile multimodal model" },
-  { id: "gemini-pro-vision", name: "Gemini 1.0 Pro Vision", description: "Optimized for image understanding" },
-  { id: "gemini-1.5-flash-8b", name: "Gemini 1.5 Flash-8B", description: "Cost effective smaller flash model" },
+  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", description: "Most capable model, supports text, code, and images" },
+  { id: "gemini-1.5-pro-latest", name: "Gemini 1.5 Pro Latest", description: "Latest version with improved capabilities" },
+  { id: "gemini-1.5-pro-vision", name: "Gemini 1.5 Pro Vision", description: "Optimized for text and image understanding" },
+  { id: "gemini-ultra", name: "Gemini Ultra", description: "Most advanced model available" },
+  { id: "gemini-1.5-pro-lite", name: "Gemini 1.5 Pro Lite", description: "Faster, lighter version for quick responses" },
+  { id: "gemini-1.5-pro-dev", name: "Gemini 1.5 Pro Dev", description: "Developer preview version with latest features" }
 ];
 
 export interface GeminiCompletionParams {
@@ -27,7 +28,7 @@ export interface GeminiCompletionParams {
 
 export class GeminiService {
   private apiKey: string;
-  private baseUrl = "https://generativelanguage.googleapis.com/v1";
+  private baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -92,7 +93,7 @@ export class GeminiService {
     try {
       if (!this.apiKey || this.apiKey.trim() === "") {
         console.log("Gemini API key is empty");
-        return GEMINI_MODELS; // Return default models if no API key
+        return GEMINI_MODELS;
       }
       
       const url = `${this.baseUrl}/models?key=${this.apiKey}`;
@@ -107,13 +108,11 @@ export class GeminiService {
       const filteredModels: GeminiModelOption[] = [];
       
       if (data.models && Array.isArray(data.models)) {
-        // Filter models that support generateContent
         data.models.forEach((model: any) => {
           if (model.name && 
               model.supportedGenerationMethods && 
               model.supportedGenerationMethods.includes("generateContent")) {
             const modelName = model.name.replace("models/", "");
-            // Only add recognized models to avoid duplicates
             if (modelName.startsWith("gemini-")) {
               filteredModels.push({
                 id: modelName,
