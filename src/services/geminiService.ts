@@ -7,9 +7,12 @@ export interface GeminiModelOption {
   description: string;
 }
 
+// Updated models based on the actual available models from the API
 export const GEMINI_MODELS: GeminiModelOption[] = [
-  { id: "gemini-pro", name: "Gemini Pro", description: "Google's general purpose text and chat model" },
-  { id: "gemini-pro-vision", name: "Gemini Pro Vision", description: "Google's multimodal model supporting text and images" },
+  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", description: "Stable version with 2 million token support" },
+  { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", description: "Fast and versatile multimodal model" },
+  { id: "gemini-pro-vision", name: "Gemini 1.0 Pro Vision", description: "Optimized for image understanding" },
+  { id: "gemini-1.5-flash-8b", name: "Gemini 1.5 Flash-8B", description: "Cost effective smaller flash model" },
 ];
 
 export interface GeminiCompletionParams {
@@ -85,6 +88,50 @@ export class GeminiService {
     }
   }
 
+  async getAvailableModels(): Promise<GeminiModelOption[]> {
+    try {
+      if (!this.apiKey || this.apiKey.trim() === "") {
+        console.log("Gemini API key is empty");
+        return GEMINI_MODELS; // Return default models if no API key
+      }
+      
+      const url = `${this.baseUrl}/models?key=${this.apiKey}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.error("Failed to fetch Gemini models:", response.status);
+        return GEMINI_MODELS;
+      }
+      
+      const data = await response.json();
+      const filteredModels: GeminiModelOption[] = [];
+      
+      if (data.models && Array.isArray(data.models)) {
+        // Filter models that support generateContent
+        data.models.forEach((model: any) => {
+          if (model.name && 
+              model.supportedGenerationMethods && 
+              model.supportedGenerationMethods.includes("generateContent")) {
+            const modelName = model.name.replace("models/", "");
+            // Only add recognized models to avoid duplicates
+            if (modelName.startsWith("gemini-")) {
+              filteredModels.push({
+                id: modelName,
+                name: model.displayName || modelName,
+                description: model.description || ""
+              });
+            }
+          }
+        });
+      }
+      
+      return filteredModels.length > 0 ? filteredModels : GEMINI_MODELS;
+    } catch (error) {
+      console.error("Error fetching Gemini models:", error);
+      return GEMINI_MODELS;
+    }
+  }
+
   async validateApiKey(): Promise<boolean> {
     try {
       if (!this.apiKey || this.apiKey.trim() === "") {
@@ -113,8 +160,9 @@ export class GeminiService {
   }
 
   async analyzeCode(code: string): Promise<string> {
+    // Default to gemini-1.5-pro model which should be available
     return this.generateCompletion({
-      model: "gemini-pro",
+      model: "gemini-1.5-pro",
       prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
 1. Main components and their functions
 2. Language and framework identification
@@ -126,8 +174,9 @@ export class GeminiService {
   }
 
   async analyzeAndSuggestIntegrations(code: string): Promise<string> {
+    // Default to gemini-1.5-pro model which should be available
     return this.generateCompletion({
-      model: "gemini-pro",
+      model: "gemini-1.5-pro",
       prompt: `Analyze this code and suggest potential integrations:\n\n${code}\n\nProvide:
 1. Current architecture overview
 2. Potential integration points

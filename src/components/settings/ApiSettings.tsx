@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { GEMINI_MODELS, geminiApiStorage, GeminiService } from '@/services/geminiService';
+import { GEMINI_MODELS, geminiApiStorage, GeminiService, GeminiModelOption } from '@/services/geminiService';
 import { toast } from 'sonner';
 
 interface ApiSettingsProps {
@@ -21,14 +21,37 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
   const [geminiKeyStatus, setGeminiKeyStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [availableModels, setAvailableModels] = useState<GeminiModelOption[]>(GEMINI_MODELS);
   
   useEffect(() => {
     const storedGeminiApiKey = geminiApiStorage.getApiKey();
     if (storedGeminiApiKey) {
       setGeminiApiKey(storedGeminiApiKey);
       validateGeminiApiKey(storedGeminiApiKey);
+      fetchAvailableModels(storedGeminiApiKey);
     }
   }, []);
+
+  const fetchAvailableModels = async (key: string) => {
+    if (!key.trim()) return;
+    
+    try {
+      const geminiService = new GeminiService(key);
+      const models = await geminiService.getAvailableModels();
+      console.log("Available Gemini models:", models);
+      
+      if (models && models.length > 0) {
+        setAvailableModels(models);
+        
+        // If current selected model is not in the list, select the first available one
+        if (!models.some(model => model.id === selectedGeminiModel)) {
+          setSelectedGeminiModel(models[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching available Gemini models:", error);
+    }
+  };
 
   const validateGeminiApiKey = async (key: string) => {
     if (!key.trim()) {
@@ -50,6 +73,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
         geminiApiStorage.setApiKey(key.trim());
         console.log("Gemini API key validated and saved");
         toast.success("Gemini API key validated successfully");
+        fetchAvailableModels(key);
       } else {
         toast.error("Invalid Gemini API key");
       }
@@ -134,6 +158,9 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                   Invalid API key. Please check and try again.
                 </p>
               )}
+              <p className="text-xs text-muted-foreground mt-2">
+                Get your Gemini API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" className="text-blue-500 hover:underline">Google AI Studio</a>
+              </p>
             </div>
             
             <div className="space-y-2">
@@ -143,7 +170,7 @@ const ApiSettings: React.FC<ApiSettingsProps> = ({
                   <SelectValue placeholder="Select a model" />
                 </SelectTrigger>
                 <SelectContent>
-                  {GEMINI_MODELS.map((model) => (
+                  {availableModels.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
                       <div className="flex flex-col">
                         <span>{model.name}</span>

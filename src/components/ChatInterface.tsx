@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Settings } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import SettingsPanel from './SettingsPanel';
+import SettingsPanel from './settings/SettingsPanel';
 import { GeminiService, geminiApiStorage, GEMINI_MODELS } from '@/services/geminiService';
 import { toast } from 'sonner';
 
@@ -78,12 +79,37 @@ const ChatInterface: React.FC = () => {
       console.log(`Sending message using Gemini model: ${selectedModel}`);
       const geminiService = new GeminiService(apiKey);
       
-      const response = await geminiService.generateCompletion({
-        model: selectedModel,
-        prompt: inputValue,
-        maxTokens: 1024,
-        temperature: 0.7
-      });
+      // Attempt to use the selected model, but fall back to a default if it fails
+      let response;
+      try {
+        response = await geminiService.generateCompletion({
+          model: selectedModel,
+          prompt: inputValue,
+          maxTokens: 1024,
+          temperature: 0.7
+        });
+      } catch (error) {
+        console.error(`Error with model ${selectedModel}, falling back to default model:`, error);
+        // Try with the first available model as fallback
+        const availableModels = await geminiService.getAvailableModels();
+        if (availableModels.length > 0) {
+          const fallbackModel = availableModels[0].id;
+          console.log(`Falling back to model: ${fallbackModel}`);
+          toast.info(`Using ${fallbackModel} as fallback model`);
+          
+          response = await geminiService.generateCompletion({
+            model: fallbackModel, 
+            prompt: inputValue,
+            maxTokens: 1024,
+            temperature: 0.7
+          });
+          
+          // Update selected model for future requests
+          setSelectedModel(fallbackModel);
+        } else {
+          throw new Error("No available models to use");
+        }
+      }
       
       const aiResponse: ChatMessage = {
         role: 'assistant',
@@ -144,7 +170,7 @@ const ChatInterface: React.FC = () => {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground text-center">
-                No messages yet. Start by sending a message or configuring your Hugging Face API key in settings.
+                No messages yet. Start by sending a message or configuring your Gemini API key in settings.
               </p>
             </div>
           ) : (

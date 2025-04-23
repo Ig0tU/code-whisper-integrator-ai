@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,26 @@ const Index = () => {
   const [repoUrl, setRepoUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedGeminiModel, setSelectedGeminiModel] = useState("");
+
+  useEffect(() => {
+    const fetchAvailableModels = async () => {
+      const apiKey = geminiApiStorage.getApiKey();
+      if (apiKey) {
+        try {
+          const geminiService = new GeminiService(apiKey);
+          const models = await geminiService.getAvailableModels();
+          if (models && models.length > 0) {
+            setSelectedGeminiModel(models[0].id);
+          }
+        } catch (error) {
+          console.error("Error fetching Gemini models:", error);
+        }
+      }
+    };
+    
+    fetchAvailableModels();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -55,23 +75,65 @@ const Index = () => {
     }
 
     try {
-      let analysis = "";
+      const geminiService = new GeminiService(geminiApiKey);
+      let modelToUse = selectedGeminiModel;
       
-      if (geminiApiKey) {
-        try {
-          const geminiService = new GeminiService(geminiApiKey);
-          analysis = await geminiService.analyzeCode(code);
-        } catch (error) {
-          console.error("Error analyzing code with Gemini:", error);
-          throw error;
+      if (!modelToUse) {
+        const availableModels = await geminiService.getAvailableModels();
+        if (availableModels.length > 0) {
+          modelToUse = availableModels[0].id;
+          setSelectedGeminiModel(modelToUse);
+        } else {
+          modelToUse = "gemini-1.5-pro";
         }
       }
       
-      setAnalysisResults(analysis);
-      setAnalysisComplete(true);
+      console.log(`Analyzing code with model: ${modelToUse}`);
+      
+      try {
+        const analysis = await geminiService.generateCompletion({
+          model: modelToUse,
+          prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
+1. Main components and their functions
+2. Language and framework identification
+3. Key integration points
+4. Potential issues or improvements`,
+          maxTokens: 1024,
+          temperature: 0.2
+        });
+        
+        setAnalysisResults(analysis);
+        setAnalysisComplete(true);
+      } catch (error) {
+        console.error(`Error with model ${modelToUse}, trying fallback:`, error);
+        
+        const availableModels = await geminiService.getAvailableModels();
+        if (availableModels.length > 1) {
+          const fallbackModel = availableModels.find(m => m.id !== modelToUse)?.id || availableModels[0].id;
+          console.log(`Falling back to model: ${fallbackModel}`);
+          
+          const analysis = await geminiService.generateCompletion({
+            model: fallbackModel,
+            prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
+1. Main components and their functions
+2. Language and framework identification
+3. Key integration points
+4. Potential issues or improvements`,
+            maxTokens: 1024,
+            temperature: 0.2
+          });
+          
+          setAnalysisResults(analysis);
+          setAnalysisComplete(true);
+          
+          setSelectedGeminiModel(fallbackModel);
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
-      console.error("Error analyzing code:", error);
-      toast.error("Failed to analyze code. Please check your API keys and try again.");
+      console.error("Error analyzing code with Gemini:", error);
+      toast.error("Failed to analyze code. Please check your API key and try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -82,17 +144,13 @@ const Index = () => {
     setIsProcessing(true);
     
     try {
-      // Handle different tabs
       if (activeTab === 'upload' && selectedFiles.length > 0) {
-        // Handle file uploads - read and analyze file contents
         const fileContents = await Promise.all(
           selectedFiles.map(file => readFileAsText(file))
         );
         await analyzeCode(fileContents.join('\n\n--- Next File ---\n\n'));
       } 
       else if (activeTab === 'url' && repoUrl) {
-        // This would need a server-side component to clone a repo
-        // For now, we'll just analyze the URL as text
         await analyzeCode(`Repository URL: ${repoUrl}`);
       } 
       else if (activeTab === 'paste' && codeInput) {
