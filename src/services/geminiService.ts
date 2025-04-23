@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 export interface GeminiModelOption {
@@ -91,7 +92,6 @@ export class GeminiService {
         return false;
       }
       
-      // Use the models endpoint to validate the API key
       const testUrl = `${this.baseUrl}/models?key=${this.apiKey}`;
       
       console.log("Validating Gemini API key...");
@@ -122,6 +122,19 @@ export class GeminiService {
 4. Potential issues or improvements`,
       maxTokens: 1024,
       temperature: 0.2
+    });
+  }
+
+  async analyzeAndSuggestIntegrations(code: string): Promise<string> {
+    return this.generateCompletion({
+      model: "gemini-pro",
+      prompt: `Analyze this code and suggest potential integrations:\n\n${code}\n\nProvide:
+1. Current architecture overview
+2. Potential integration points
+3. Suggested improvements for better AI integration
+4. Examples of how Gemini could enhance functionality`,
+      maxTokens: 1024,
+      temperature: 0.3
     });
   }
 }

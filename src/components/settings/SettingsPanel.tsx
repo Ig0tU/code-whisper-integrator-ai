@@ -7,20 +7,12 @@ import ParametersPanel from './ParametersPanel';
 import PromptsPanel from './PromptsPanel';
 
 const SettingsPanel: React.FC = () => {
-  // Model selection state
-  const [selectedHfModel, setSelectedHfModel] = useState('mistralai/Mistral-7B-Instruct-v0.2');
   const [selectedGeminiModel, setSelectedGeminiModel] = useState('gemini-pro');
-  
-  // Presets state
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  
-  // Parameters state
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
   const [autoSave, setAutoSave] = useState(true);
   const [autoAnalyze, setAutoAnalyze] = useState(true);
-  
-  // Prompts state
   const [activePrompt, setActivePrompt] = useState('default');
 
   return (
@@ -34,8 +26,6 @@ const SettingsPanel: React.FC = () => {
       
       <TabsContent value="api">
         <ApiSettings 
-          selectedHfModel={selectedHfModel}
-          setSelectedHfModel={setSelectedHfModel}
           selectedGeminiModel={selectedGeminiModel}
           setSelectedGeminiModel={setSelectedGeminiModel}
         />

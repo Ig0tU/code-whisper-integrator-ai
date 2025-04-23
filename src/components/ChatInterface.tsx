@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Settings } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -7,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import SettingsPanel from './SettingsPanel';
-import { HuggingFaceService, huggingFaceApiStorage } from '@/services/huggingfaceService';
 import { GeminiService, geminiApiStorage, GEMINI_MODELS } from '@/services/geminiService';
 import { toast } from 'sonner';
 
@@ -26,12 +24,10 @@ const ChatInterface: React.FC = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].id);
   
-  // Check for API key on mount
   useEffect(() => {
     const apiKey = geminiApiStorage.getApiKey();
     setApiKeyMissing(!apiKey);
     
-    // Set up event listener for model changes
     const handleModelChange = (event: CustomEvent) => {
       if (event.detail && event.detail.model) {
         setSelectedModel(event.detail.model);
@@ -82,7 +78,6 @@ const ChatInterface: React.FC = () => {
       console.log(`Sending message using Gemini model: ${selectedModel}`);
       const geminiService = new GeminiService(apiKey);
       
-      // Make a real API call to Gemini
       const response = await geminiService.generateCompletion({
         model: selectedModel,
         prompt: inputValue,
@@ -113,7 +108,6 @@ const ChatInterface: React.FC = () => {
   };
 
   const toggleRecording = () => {
-    // Real voice recording functionality would go here
     toast.info("Voice recording not implemented yet");
     setIsRecording(!isRecording);
   };

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Code, FileCode, Link, Upload } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
-import { HuggingFaceService, huggingFaceApiStorage } from '@/services/huggingfaceService';
 import { GeminiService, geminiApiStorage } from '@/services/geminiService';
 import { toast } from 'sonner';
 
@@ -48,12 +46,10 @@ const Index = () => {
   };
 
   const analyzeCode = async (code: string) => {
-    // Try to use Gemini first, fall back to Hugging Face if not available
     const geminiApiKey = geminiApiStorage.getApiKey();
-    const huggingFaceApiKey = huggingFaceApiStorage.getApiKey();
     
-    if (!geminiApiKey && !huggingFaceApiKey) {
-      toast.error("Please add either your Google Gemini or Hugging Face API key in settings");
+    if (!geminiApiKey) {
+      toast.error("Please add your Google Gemini API key in settings");
       setIsProcessing(false);
       return;
     }
@@ -67,17 +63,8 @@ const Index = () => {
           analysis = await geminiService.analyzeCode(code);
         } catch (error) {
           console.error("Error analyzing code with Gemini:", error);
-          if (huggingFaceApiKey) {
-            toast.info("Falling back to Hugging Face for analysis");
-            const huggingFaceService = new HuggingFaceService(huggingFaceApiKey);
-            analysis = await huggingFaceService.analyzeCode(code);
-          } else {
-            throw error;
-          }
+          throw error;
         }
-      } else if (huggingFaceApiKey) {
-        const huggingFaceService = new HuggingFaceService(huggingFaceApiKey);
-        analysis = await huggingFaceService.analyzeCode(code);
       }
       
       setAnalysisResults(analysis);
