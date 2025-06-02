@@ -14,6 +14,9 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<string>('');
+  const [generalAnalysis, setGeneralAnalysis] = useState<string>('');
+  const [strategicOpportunities, setStrategicOpportunities] = useState<string>('');
+  const [criticalRisks, setCriticalRisks] = useState<string>('');
   const [codeInput, setCodeInput] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +41,25 @@ const Index = () => {
     
     fetchAvailableModels();
   }, []);
+
+  useEffect(() => {
+    if (analysisResults) {
+      const generalMatch = analysisResults.match(/## General Analysis
+([\s\S]*?)(?=## Strategic Opportunities|## Critical Risks|$)/);
+      const opportunitiesMatch = analysisResults.match(/## Strategic Opportunities
+([\s\S]*?)(?=## Critical Risks|$)/);
+      const risksMatch = analysisResults.match(/## Critical Risks
+([\s\S]*)/);
+
+      setGeneralAnalysis(generalMatch && generalMatch[1] ? generalMatch[1].trim() : 'Not available.');
+      setStrategicOpportunities(opportunitiesMatch && opportunitiesMatch[1] ? opportunitiesMatch[1].trim() : 'Not available.');
+      setCriticalRisks(risksMatch && risksMatch[1] ? risksMatch[1].trim() : 'Not available.');
+    } else {
+      setGeneralAnalysis('');
+      setStrategicOpportunities('');
+      setCriticalRisks('');
+    }
+  }, [analysisResults]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -93,12 +115,31 @@ const Index = () => {
       try {
         const analysis = await geminiService.generateCompletion({
           model: modelToUse,
-          prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
-1. Main components and their functions
-2. Language and framework identification
-3. Key integration points
-4. Potential issues or improvements`,
-          maxTokens: 1024,
+          prompt: `Analyze the following code. Provide a detailed analysis covering these aspects:
+
+## General Analysis
+1.  **Main Components & Functions:** Describe the primary parts of the code and their roles.
+2.  **Language & Framework:** Identify the programming language(s) and any frameworks/libraries used.
+3.  **Key Integration Points:** Highlight areas where this code interacts with other systems, modules, or services.
+4.  **Potential Issues or General Improvements:** List any general issues, areas for refactoring, or minor improvements.
+
+## Strategic Opportunities
+Based on the code's functionality and structure, identify and describe 2-3 top strategic opportunities. Focus on:
+*   **Novel AI Integration:** How could AI (e.g., Gemini models, machine learning) be integrated to create significant new value, enhance capabilities, or solve complex problems uniquely? Provide specific examples.
+*   **High-Impact Enhancements:** What architectural changes or feature additions could provide substantial benefits (e.g., scalability, new revenue streams, significant user experience improvement)?
+
+## Critical Risks
+Identify and describe 2-3 top critical risks present in the code. Focus on:
+*   **Security Vulnerabilities:** Any weaknesses that could be exploited.
+*   **Major Architectural Flaws:** Fundamental design problems that could hinder scalability, maintainability, or reliability.
+*   **Performance Bottlenecks:** Specific areas that are likely to cause significant performance issues.
+*   **Data Integrity Issues:** Potential risks to the correctness and consistency of data.
+
+For each risk, explain why it's critical and suggest the potential consequences if not addressed.
+
+Please ensure the output is clearly structured with Markdown headings (e.g., "## General Analysis", "## Strategic Opportunities", "## Critical Risks").
+`,
+          maxTokens: 2048,
           temperature: 0.2
         });
         
@@ -114,12 +155,31 @@ const Index = () => {
           
           const analysis = await geminiService.generateCompletion({
             model: fallbackModel,
-            prompt: `Analyze this code:\n\n${code}\n\nProvide a detailed analysis including:
-1. Main components and their functions
-2. Language and framework identification
-3. Key integration points
-4. Potential issues or improvements`,
-            maxTokens: 1024,
+            prompt: `Analyze the following code. Provide a detailed analysis covering these aspects:
+
+## General Analysis
+1.  **Main Components & Functions:** Describe the primary parts of the code and their roles.
+2.  **Language & Framework:** Identify the programming language(s) and any frameworks/libraries used.
+3.  **Key Integration Points:** Highlight areas where this code interacts with other systems, modules, or services.
+4.  **Potential Issues or General Improvements:** List any general issues, areas for refactoring, or minor improvements.
+
+## Strategic Opportunities
+Based on the code's functionality and structure, identify and describe 2-3 top strategic opportunities. Focus on:
+*   **Novel AI Integration:** How could AI (e.g., Gemini models, machine learning) be integrated to create significant new value, enhance capabilities, or solve complex problems uniquely? Provide specific examples.
+*   **High-Impact Enhancements:** What architectural changes or feature additions could provide substantial benefits (e.g., scalability, new revenue streams, significant user experience improvement)?
+
+## Critical Risks
+Identify and describe 2-3 top critical risks present in the code. Focus on:
+*   **Security Vulnerabilities:** Any weaknesses that could be exploited.
+*   **Major Architectural Flaws:** Fundamental design problems that could hinder scalability, maintainability, or reliability.
+*   **Performance Bottlenecks:** Specific areas that are likely to cause significant performance issues.
+*   **Data Integrity Issues:** Potential risks to the correctness and consistency of data.
+
+For each risk, explain why it's critical and suggest the potential consequences if not addressed.
+
+Please ensure the output is clearly structured with Markdown headings (e.g., "## General Analysis", "## Strategic Opportunities", "## Critical Risks").
+`,
+            maxTokens: 2048,
             temperature: 0.2
           });
           
@@ -325,18 +385,37 @@ const Index = () => {
               <CardHeader>
                 <CardTitle>Analysis Results</CardTitle>
                 <CardDescription>
-                  Code structure and integration points
+                  Detailed insights from AI analysis.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="rounded-md bg-muted p-3 whitespace-pre-wrap font-mono text-sm">
-                    {analysisResults}
+                {generalAnalysis && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2">General Analysis</h3>
+                    <div className="rounded-md bg-muted p-3 whitespace-pre-wrap font-mono text-sm">
+                      {generalAnalysis}
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Ready to start interacting with your code through the AI chat.
-                  </p>
-                </div>
+                )}
+                {strategicOpportunities && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2 text-green-600">Strategic Opportunities</h3>
+                    <div className="rounded-md bg-muted p-3 whitespace-pre-wrap font-mono text-sm">
+                      {strategicOpportunities}
+                    </div>
+                  </div>
+                )}
+                {criticalRisks && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2 text-red-600">Critical Risks</h3>
+                    <div className="rounded-md bg-muted p-3 whitespace-pre-wrap font-mono text-sm">
+                      {criticalRisks}
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground mt-4">
+                  Ready to start interacting with your code through the AI chat.
+                </p>
               </CardContent>
             </Card>
           )}
